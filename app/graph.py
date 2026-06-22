@@ -23,9 +23,9 @@ class ChatState(TypedDict, total=False):
 ANSWER_MODEL = os.getenv("ANSWER_MODEL", "llama-3.3-70b-versatile")
 FAST_MODEL = os.getenv("FAST_MODEL", "llama-3.1-8b-instant")
 RETRIEVAL_K = int(os.getenv("RETRIEVAL_K", "4"))
-# all-MiniLM embeddings are normalized at ingest and query time, so this is an L2
-# distance cutoff in [0, 2]. ~1.2 keeps on-topic chunks and drops off-topic ones.
-RETRIEVAL_MAX_DISTANCE = float(os.getenv("RETRIEVAL_MAX_DISTANCE", "1.2"))
+# Chroma cosine distance (1 - cosine similarity), range [0, 2]. ~0.7 keeps on-topic
+# chunks and drops off-topic ones so the model abstains instead of hallucinating.
+RETRIEVAL_MAX_DISTANCE = float(os.getenv("RETRIEVAL_MAX_DISTANCE", "0.7"))
 
 PRONOUNS = {
     "it", "this", "that", "they", "them", "he", "she", "him", "her",

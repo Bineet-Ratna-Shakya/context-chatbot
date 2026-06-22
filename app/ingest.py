@@ -3,14 +3,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from langchain_community.vectorstores import FAISS
+from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = Path(os.getenv("DOCS_DIR", str(ROOT / "docs")))
-INDEX_DIR = ROOT / "data" / "faiss_index"
+# Chroma persists to sqlite, which does not work on exFAT/network volumes. Override
+# CHROMA_DIR to an internal-disk path when developing on such a drive; Docker is fine.
+PERSIST_DIR = Path(os.getenv("CHROMA_DIR", str(ROOT / "data" / "chroma")))
+COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "documents")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 
@@ -62,8 +65,8 @@ def load_documents() -> list[Document]:
 
 
 def main() -> None:
-    if INDEX_DIR.exists() and any(INDEX_DIR.iterdir()):
-        print(f"Index already exists at {INDEX_DIR}")
+    if PERSIST_DIR.exists() and any(PERSIST_DIR.iterdir()):
+        print(f"Index already exists at {PERSIST_DIR}")
         return
 
     documents = load_documents()
@@ -76,12 +79,16 @@ def main() -> None:
     splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=160)
     chunks = splitter.split_documents(documents)
 
-    INDEX_DIR.parent.mkdir(parents=True, exist_ok=True)
-    embeddings = get_embeddings()
-    vectorstore = FAISS.from_documents(chunks, embeddings)
-    vectorstore.save_local(str(INDEX_DIR))
+    PERSIST_DIR.parent.mkdir(parents=True, exist_ok=True)
+    Chroma.from_documents(
+        chunks,
+        embedding=get_embeddings(),
+        collection_name=COLLECTION_NAME,
+        persist_directory=str(PERSIST_DIR),
+        collection_metadata={"hnsw:space": "cosine"},
+    )
 
-    print(f"Indexed {len(chunks)} chunks from {len(documents)} documents into {INDEX_DIR}")
+    print(f"Indexed {len(chunks)} chunks from {len(documents)} documents into {PERSIST_DIR}")
 
 
 if __name__ == "__main__":

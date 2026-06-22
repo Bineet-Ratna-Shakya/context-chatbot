@@ -11,7 +11,7 @@ from .fakes import FakeGraph
 @pytest.fixture
 def client():
     # TestClient without `with` does not run lifespan, so we wire a fake graph
-    # and skip the FAISS index / Groq dependencies.
+    # and skip the Chroma index / Groq dependencies.
     main_module._request_times.clear()
     main_module.app.state.graph = FakeGraph()
     return TestClient(main_module.app)

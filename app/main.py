@@ -12,12 +12,12 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
-from langchain_community.vectorstores import FAISS
+from langchain_chroma import Chroma
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field
 
 from app.graph import build_graph
-from app.ingest import INDEX_DIR, get_embeddings
+from app.ingest import COLLECTION_NAME, PERSIST_DIR, get_embeddings
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = ROOT / "app" / "static"
@@ -78,14 +78,13 @@ def token_text(content: Any) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_dotenv()
-    if not INDEX_DIR.exists():
+    if not PERSIST_DIR.exists():
         raise RuntimeError("Index not found — run uv run python -m app.ingest.")
 
-    embeddings = get_embeddings()
-    vectorstore = FAISS.load_local(
-        str(INDEX_DIR),
-        embeddings,
-        allow_dangerous_deserialization=True,
+    vectorstore = Chroma(
+        persist_directory=str(PERSIST_DIR),
+        embedding_function=get_embeddings(),
+        collection_name=COLLECTION_NAME,
     )
     app.state.graph = build_graph(vectorstore)
     yield

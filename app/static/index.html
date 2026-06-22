@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Context Chatbot</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f5f0;
+        --panel: #ffffff;
+        --ink: #17211f;
+        --muted: #68736f;
+        --line: #d9ddd7;
+        --user: #145c4d;
+        --assistant: #f0f4f2;
+        --accent: #b86b28;
+        --focus: #1a7f68;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      .app {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        min-height: 100vh;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px clamp(16px, 4vw, 42px);
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.76);
+        backdrop-filter: blur(12px);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 760;
+      }
+
+      .status {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      button {
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel);
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        min-height: 40px;
+        padding: 0 14px;
+      }
+
+      button:hover {
+        border-color: var(--focus);
+      }
+
+      main {
+        width: min(920px, 100%);
+        margin: 0 auto;
+        padding: 28px clamp(14px, 3vw, 28px);
+        overflow: auto;
+      }
+
+      .messages {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .message {
+        max-width: min(760px, 100%);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px 15px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .message.user {
+        align-self: flex-end;
+        background: var(--user);
+        border-color: var(--user);
+        color: #ffffff;
+      }
+
+      .message.assistant {
+        align-self: flex-start;
+        background: var(--assistant);
+      }
+
+      .sources {
+        margin-top: 12px;
+        white-space: normal;
+      }
+
+      details {
+        border-top: 1px solid var(--line);
+        padding-top: 10px;
+      }
+
+      summary {
+        color: var(--accent);
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .source {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .source a {
+        color: var(--focus);
+      }
+
+      form {
+        display: flex;
+        gap: 10px;
+        width: min(920px, 100%);
+        margin: 0 auto;
+        padding: 18px clamp(14px, 3vw, 28px) 24px;
+        border-top: 1px solid var(--line);
+      }
+
+      textarea {
+        flex: 1;
+        min-height: 48px;
+        max-height: 160px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 13px;
+        color: var(--ink);
+        font: inherit;
+      }
+
+      textarea:focus {
+        border-color: var(--focus);
+        outline: 2px solid rgba(26, 127, 104, 0.14);
+      }
+
+      .send {
+        background: var(--focus);
+        border-color: var(--focus);
+        color: white;
+        font-weight: 700;
+        min-width: 92px;
+      }
+
+      @media (max-width: 620px) {
+        header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        form {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .send {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div>
+          <h1>Context Chatbot</h1>
+          <div class="status" id="status">Ready</div>
+        </div>
+        <button type="button" id="new-chat">New conversation</button>
+      </header>
+
+      <main>
+        <div class="messages" id="messages">
+          <div class="message assistant">
+            Ask about LangGraph, LangChain, or retrieval-augmented generation.
+          </div>
+        </div>
+      </main>
+
+      <form id="chat-form">
+        <textarea
+          id="message"
+          rows="1"
+          placeholder="Type a message"
+          autocomplete="off"
+        ></textarea>
+        <button class="send" type="submit">Send</button>
+      </form>
+    </div>
+
+    <script>
+      const form = document.querySelector("#chat-form");
+      const input = document.querySelector("#message");
+      const messages = document.querySelector("#messages");
+      const status = document.querySelector("#status");
+      const newChat = document.querySelector("#new-chat");
+
+      let threadId = crypto.randomUUID();
+
+      function addMessage(role, text = "") {
+        const element = document.createElement("div");
+        element.className = `message ${role}`;
+        element.textContent = text;
+        messages.appendChild(element);
+        element.scrollIntoView({ block: "end" });
+        return element;
+      }
+
+      function renderSources(container, sources) {
+        if (!sources.length) return;
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "sources";
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = `Sources (${sources.length})`;
+        details.appendChild(summary);
+
+        sources.forEach((source) => {
+          const item = document.createElement("div");
+          item.className = "source";
+          const title = document.createElement("strong");
+          title.textContent = source.title || "Untitled";
+          item.appendChild(title);
+
+          if (source.source) {
+            item.appendChild(document.createTextNode(" · "));
+            if (source.source.startsWith("http")) {
+              const link = document.createElement("a");
+              link.href = source.source;
+              link.target = "_blank";
+              link.rel = "noreferrer";
+              link.textContent = source.source;
+              item.appendChild(link);
+            } else {
+              item.appendChild(document.createTextNode(source.source));
+            }
+          }
+
+          if (source.snippet) {
+            const snippet = document.createElement("div");
+            snippet.textContent = source.snippet;
+            item.appendChild(snippet);
+          }
+
+          details.appendChild(item);
+        });
+
+        wrapper.appendChild(details);
+        container.appendChild(wrapper);
+      }
+
+      function parseEvents(buffer) {
+        const parts = buffer.split("\n\n");
+        return [parts.slice(0, -1), parts.at(-1)];
+      }
+
+      function readEvent(raw) {
+        let event = "message";
+        let data = "";
+        raw.split("\n").forEach((line) => {
+          if (line.startsWith("event: ")) event = line.slice(7);
+          if (line.startsWith("data: ")) data += line.slice(6);
+        });
+        return { event, data: data ? JSON.parse(data) : null };
+      }
+
+      async function sendMessage(text) {
+        addMessage("user", text);
+        const reply = addMessage("assistant", "");
+        const answer = document.createElement("span");
+        reply.appendChild(answer);
+        status.textContent = "Thinking";
+        input.disabled = true;
+
+        try {
+          const response = await fetch("/chat/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text, thread_id: threadId }),
+          });
+
+          if (!response.ok || !response.body) {
+            throw new Error(`Request failed (${response.status})`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const [events, rest] = parseEvents(buffer);
+            buffer = rest;
+
+            for (const raw of events) {
+              const message = readEvent(raw);
+              if (message.event === "token") {
+                answer.textContent += message.data;
+              } else if (message.event === "sources") {
+                renderSources(reply, message.data);
+              } else if (message.event === "error") {
+                reply.textContent = message.data;
+              }
+              reply.scrollIntoView({ block: "end" });
+            }
+          }
+        } catch (err) {
+          if (!answer.textContent) {
+            answer.textContent = "Something went wrong. Please try again.";
+          }
+        } finally {
+          input.disabled = false;
+          input.focus();
+          status.textContent = "Ready";
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text || input.disabled) return;
+        input.value = "";
+        await sendMessage(text);
+      });
+
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          form.requestSubmit();
+        }
+      });
+
+      newChat.addEventListener("click", () => {
+        threadId = crypto.randomUUID();
+        messages.innerHTML = "";
+        addMessage("assistant", "Ask about LangGraph, LangChain, or retrieval-augmented generation.");
+        status.textContent = "New conversation";
+        input.focus();
+      });
+    </script>
+  </body>
+</html>

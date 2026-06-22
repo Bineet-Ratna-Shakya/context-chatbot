@@ -1,0 +1,40 @@
+[project]
+name = "context-chatbot"
+version = "0.1.0"
+description = "Context-aware RAG chatbot with LangGraph, Groq, FastAPI, and FAISS."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "langgraph>=0.2.60",
+    "langchain-core>=0.3.0",
+    "langchain-groq>=0.2.0",
+    "langchain-huggingface>=0.1.0",
+    "langchain-community>=0.3.0",
+    "langchain-text-splitters>=0.3.0",
+    "sentence-transformers>=3.0.0",
+    "torch==2.7.1+cpu; sys_platform == 'linux'",
+    "torch>=2.7.1; sys_platform != 'linux'",
+    "faiss-cpu>=1.8.0",
+    "wikipedia>=1.4.0",
+    "python-dotenv>=1.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

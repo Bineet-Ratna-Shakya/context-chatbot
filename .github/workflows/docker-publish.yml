@@ -3,6 +3,13 @@ name: Build and push Docker image
 on:
   push:
     branches: [main]
+    paths:
+      - "app/**"
+      - "docs/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
+      - "uv.lock"
   workflow_dispatch:
 
 jobs:

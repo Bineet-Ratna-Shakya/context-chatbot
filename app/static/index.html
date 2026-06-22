@@ -223,7 +223,16 @@
       const status = document.querySelector("#status");
       const newChat = document.querySelector("#new-chat");
 
-      let threadId = crypto.randomUUID();
+      // crypto.randomUUID is only available in secure contexts (https / localhost),
+      // so fall back to a random id when the page is opened over plain http or an ip.
+      function newThreadId() {
+        if (window.crypto && typeof crypto.randomUUID === "function") {
+          return crypto.randomUUID();
+        }
+        return "thread-" + Date.now().toString(36) + Math.random().toString(36).slice(2);
+      }
+
+      let threadId = newThreadId();
 
       function addMessage(role, text = "") {
         const element = document.createElement("div");
@@ -363,7 +372,7 @@
       });
 
       newChat.addEventListener("click", () => {
-        threadId = crypto.randomUUID();
+        threadId = newThreadId();
         messages.innerHTML = "";
         addMessage("assistant", "Ask about LangGraph, LangChain, or retrieval-augmented generation.");
         status.textContent = "New conversation";

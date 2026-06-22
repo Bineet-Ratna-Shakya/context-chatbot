@@ -34,4 +34,5 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          provenance: false
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/context-chatbot:latest

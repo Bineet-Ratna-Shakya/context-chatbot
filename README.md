@@ -7,7 +7,7 @@ simple web page. Search is handled by ChromaDB and the answers come from Groq.
 
 - Docker image: https://hub.docker.com/r/soulpiee/context-chatbot
 - GitHub repo: https://github.com/Bineet-Ratna-Shakya/context-chatbot
-- Demo video: TODO
+- Demo video: https://youtu.be/b0fPRSsJvA4
 
 ## Run
 
